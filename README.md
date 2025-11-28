@@ -2,6 +2,10 @@
 
 Complete production-ready platform with **10+ LLM models**, **3D avatars**, **domain management**, **automated deployment**, and **Stripe billing**.
 
+**👨‍💻 Created by**: 808_KiNg_MiLkMaN (Malcolm Lee) | Email: [malcolmlee3@gmail.com](mailto:malcolmlee3@gmail.com) | GitHub: [@808MiLkMaN](https://github.com/808MiLkMaN)
+
+**🌐 Live Platform**: [alohanovauniverse.ai](https://alohanovauniverse.ai)
+
 ## ✨ Features
 
 ### 🤖 AI & LLMs
@@ -98,15 +102,45 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for complete setup.
 
 ## 🚀 Deployment
 
+### Quick Deploy to Vercel
 ```bash
-# Vercel
+# Vercel (CLI)
 vercel --prod
 
-# Docker
+# GitHub Actions (Automatic)
+# Push to master branch - GitHub Actions will automatically build and deploy
+git push origin master
+```
+
+### Docker
+```bash
 docker-compose up -d
 ```
 
 See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed instructions.
+
+## 🔄 GitHub Actions & CI/CD
+
+This repository includes automated CI/CD workflow that:
+- ✅ Runs on every push to `master` or `main` branch
+- ✅ Installs dependencies and builds the project
+- ✅ Runs TypeScript type checking and ESLint
+- ✅ Automatically deploys to Vercel on master branch
+- ✅ Includes environment variables for LLM API keys
+
+### Configured Secrets (GitHub Repository Settings)
+- `VERCEL_TOKEN` - Vercel API token for deployments
+- `VERCEL_ORG_ID` - Vercel organization ID
+- `GOOGLE_AI_KEY` - Google Gemini API key
+- `NEXT_PUBLIC_API_URL` - Backend API base URL
+
+### Workflow File
+See [.github/workflows/deploy.yml](./.github/workflows/deploy.yml) for complete workflow configuration.
+
+### Viewing Workflow Runs
+1. Go to GitHub repository: https://github.com/808MiLkMaN/aloha-platform
+2. Click "Actions" tab
+3. View build logs and deployment status
 
 ## 📞 Support
 
