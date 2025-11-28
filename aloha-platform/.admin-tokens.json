@@ -1,0 +1,16 @@
+{
+  "email": "malcolmlee3@gmail.com",
+  "apiKey": "aloha_eyJlbWFpbCI6Im1hbGNvbG1sZWUzQGdtYWlsLmNvbSIsInRpZXIiOiJMSUZFVElNRV9FTlRFUlBSSVNFIiwiaWF0IjoxNzY0MjQ5MzkwLCJleHAiOjE3OTU3ODUzOTB9_be5f2851f4b9536e6245eed0cfac63019caf05ed76b3847d298a2fd7811c881e",
+  "jwtToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Im1hbGNvbG1sZWUzQGdtYWlsLmNvbSIsImlhdCI6MTc2NDI0OTM5MCwiZXhwIjoxNzY0MzM1NzkwfQ==.jKakdC//A//hzVOPlcOlELv0nbZl2UkTiiDx4I248Ng=",
+  "refreshToken": "refresh_malcolmlee3@gmail.com_cead33dbd2d4a8d50c6ed91e82b13af9d6df5dc092ae9d4be2c74de0c70d1db9",
+  "secret": "dev-secret-46d8afa07ee19c4f572f8ccaeda5800b",
+  "expiresAt": 1795785390280,
+  "tier": "LIFETIME_ENTERPRISE",
+  "quotas": {
+    "apiRequests": null,
+    "deployments": null,
+    "avatars": null,
+    "videoHours": null
+  },
+  "createdAt": "2025-11-27T13:16:30.280Z"
+}
