@@ -512,6 +512,205 @@ app.post('/api/domains/check', async (req, res) => {
 });
 
 // ============================================
+// USER API KEY MANAGEMENT (Add Custom Models)
+// ============================================
+
+const userApiKeys = new Map();
+
+// Save user API keys for any model they want to add
+app.post('/api/settings/api-keys', (req, res) => {
+  try {
+    const { email, apiKey, provider, model } = req.body;
+
+    if (!email || !apiKey || !provider) {
+      return res.status(400).json({ error: 'Email, API Key, and provider are required' });
+    }
+
+    if (!userApiKeys.has(email)) {
+      userApiKeys.set(email, {});
+    }
+
+    const userKeys = userApiKeys.get(email);
+    userKeys[provider] = {
+      apiKey,
+      model: model || provider.toLowerCase(),
+      addedAt: new Date().toISOString(),
+      active: true,
+    };
+
+    res.json({
+      success: true,
+      message: `${provider} API key saved successfully`,
+      provider,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get user's configured API keys (without exposing the full key)
+app.get('/api/settings/api-keys', (req, res) => {
+  try {
+    const email = req.headers['x-user-email'];
+    if (!email) {
+      return res.status(400).json({ error: 'User email is required' });
+    }
+
+    const userKeys = userApiKeys.get(email) || {};
+    const safeKeys = {};
+
+    Object.entries(userKeys).forEach(([provider, config]) => {
+      safeKeys[provider] = {
+        provider,
+        model: config.model,
+        addedAt: config.addedAt,
+        active: config.active,
+        // Don't return the actual API key
+      };
+    });
+
+    res.json({
+      success: true,
+      keys: safeKeys,
+      available: Object.keys(safeKeys).length,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete user's API key for a provider
+app.delete('/api/settings/api-keys/:provider', (req, res) => {
+  try {
+    const email = req.headers['x-user-email'];
+    const { provider } = req.params;
+
+    if (!email) {
+      return res.status(400).json({ error: 'User email is required' });
+    }
+
+    const userKeys = userApiKeys.get(email);
+    if (userKeys && userKeys[provider]) {
+      delete userKeys[provider];
+    }
+
+    res.json({
+      success: true,
+      message: `${provider} API key deleted`,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// ENHANCED LLM CHAT WITH USER API KEYS
+// ============================================
+
+app.post('/api/llm/chat', async (req, res) => {
+  try {
+    const { prompt, model = 'gemini', userEmail } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt is required' });
+    }
+
+    llmRequestCount++;
+
+    let response;
+    let usedProvider = null;
+
+    // Try user-provided key first, then fall back to env vars
+    const userKeys = userEmail ? userApiKeys.get(userEmail) : null;
+    let customClient = null;
+
+    if (userKeys && userKeys[model]) {
+      // Use user's custom API key
+      const config = userKeys[model];
+      try {
+        if (model.toLowerCase() === 'claude') {
+          customClient = new Anthropic({ apiKey: config.apiKey });
+          const claudeResponse = await customClient.messages.create({
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 1024,
+            messages: [{ role: 'user', content: prompt }],
+          });
+          response = claudeResponse.content[0].text;
+          usedProvider = 'Claude (User Key)';
+        } else if (model.toLowerCase() === 'gpt' || model.toLowerCase() === 'gpt-4' || model.toLowerCase() === 'openai') {
+          customClient = new OpenAI({ apiKey: config.apiKey });
+          const gptResponse = await customClient.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [{ role: 'user', content: prompt }],
+          });
+          response = gptResponse.choices[0].message.content;
+          usedProvider = 'GPT-4o (User Key)';
+        } else if (model.toLowerCase() === 'gemini' || model.toLowerCase() === 'google') {
+          customClient = new GoogleGenerativeAI(config.apiKey);
+          const genModel = customClient.getGenerativeModel({ model: 'gemini-2.0-flash' });
+          const geminiResponse = await genModel.generateContent(prompt);
+          response = geminiResponse.response.text();
+          usedProvider = 'Gemini (User Key)';
+        }
+      } catch (customError) {
+        console.error('Custom key error:', customError.message);
+        // Fall through to use env var keys
+      }
+    }
+
+    // Fall back to environment variable keys if user key not available or failed
+    if (!response) {
+      const modelLower = (model || '').toLowerCase();
+
+      if (modelLower.includes('claude')) {
+        if (!llmClients.anthropic) {
+          return res.status(400).json({ error: 'Claude API key not configured. Add your key in Settings.' });
+        }
+        const claudeResponse = await llmClients.anthropic.messages.create({
+          model: 'claude-3-5-sonnet-20241022',
+          max_tokens: 1024,
+          messages: [{ role: 'user', content: prompt }],
+        });
+        response = claudeResponse.content[0].text;
+        usedProvider = 'Claude (Env)';
+      } else if (modelLower.includes('gpt') || modelLower.includes('openai')) {
+        if (!llmClients.openai) {
+          return res.status(400).json({ error: 'OpenAI API key not configured. Add your key in Settings.' });
+        }
+        const gptResponse = await llmClients.openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'user', content: prompt }],
+        });
+        response = gptResponse.choices[0].message.content;
+        usedProvider = 'GPT-4o (Env)';
+      } else if (modelLower.includes('gemini') || modelLower.includes('google')) {
+        if (!llmClients.google) {
+          return res.status(400).json({ error: 'Google AI key not configured. Add your key in Settings.' });
+        }
+        const modelInstance = llmClients.google.getGenerativeModel({ model: 'gemini-2.0-flash' });
+        const geminiResponse = await modelInstance.generateContent(prompt);
+        response = geminiResponse.response.text();
+        usedProvider = 'Gemini (Env)';
+      } else {
+        return res.status(400).json({ error: `Unknown model: ${model}` });
+      }
+    }
+
+    res.json({
+      success: true,
+      model,
+      provider: usedProvider,
+      prompt,
+      response,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('LLM Chat Error:', error.message);
+    res.status(500).json({ error: error.message || 'Failed to generate response' });
+  }
+});
+
+// ============================================
 // DEPLOYMENT (Placeholder)
 // ============================================
 

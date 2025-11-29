@@ -70,8 +70,15 @@ export default function DashboardPage() {
     try {
       const res = await fetch('http://localhost:5000/api/llm/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, prompt }),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-email': 'malcolmlee3@gmail.com', // Send user email for key lookup
+        },
+        body: JSON.stringify({
+          model,
+          prompt,
+          userEmail: 'malcolmlee3@gmail.com', // Also in body for redundancy
+        }),
       });
       const data = await res.json();
 
@@ -83,7 +90,8 @@ export default function DashboardPage() {
 
       // Check if response has the answer
       if (data.response) {
-        setResponse(data.response);
+        const provider = data.provider || 'Unknown Provider';
+        setResponse(`[${provider}]\n\n${data.response}`);
         setPrompt('');
       } else if (data.error) {
         setResponse(`❌ ${data.error}`);
